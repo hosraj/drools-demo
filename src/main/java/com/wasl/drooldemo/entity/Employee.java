@@ -1,42 +1,28 @@
 package com.wasl.drooldemo.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.YearMonth;
 
-/**
- * Entity representing an employee.
- */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Document(collection = "employees")
 public class Employee {
-
     @Id
     private String id;
     private String name;
     private double salary;
-    private int yearsOfExperience;
+    private int experience;
     private String position;
     private String education;
+    @Field("company_id")
     private String companyId;
-    private boolean valid;
-    private YearMonth month;
-
-    // Constructor with parameters
-    public Employee(String id, int salary, int yearsOfExperience, String position, String education, String companyId, YearMonth employmentDate) {
-        this.id = id;
-        this.salary = salary;
-        this.yearsOfExperience = yearsOfExperience;
-        this.position = position;
-        this.education = education;
-        this.companyId = companyId;
-        this.month = employmentDate;
-    }
-
-
+    @Field("join_date")
+    private YearMonth joinDate;
 }
