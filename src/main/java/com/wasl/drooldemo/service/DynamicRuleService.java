@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service class for managing dynamic rules and checking employee salaries.
@@ -100,7 +101,7 @@ public class DynamicRuleService {
         if (kieContainer == null) {
             throw new RuntimeException(
                     "Rules not found for company: " + companyId +
-                    " for " + maxDateLessThanOrEqualToLastDayOfMonth);
+                            " for " + maxDateLessThanOrEqualToLastDayOfMonth);
         }
 
         KieSession kieSession = kieContainer.newKieSession();
@@ -113,14 +114,57 @@ public class DynamicRuleService {
         employeeRepository.saveAll(employees);
         return employees;
     }
-    //todo public List<Employee> checkSalaries(List<Employee>) {
-    //  // Group employees by YearMonth
-    //        Map<YearMonth, List<Employee>> groupedByYearMonth = employees.stream()
-    //                .collect(Collectors.groupingBy(Employee::getYearMonth));
-    //
-    //        // Print the grouped result
-    //        groupedByYearMonth.forEach((yearMonth, employeeList) -> {
-    //            System.out.println("YearMonth: " + yearMonth);
-    //            employeeList.forEach(employee -> System.out.println("    Employee: " + employee));
-    //        });
+
+    /**
+     * Checks the salaries of employees
+     *
+     * @param employees the employees
+     * @return a list of employees with updated salary validation status
+     */
+    //todo
+    public List<Employee> checkSalaries(List<Employee> employees) {
+        // Group employees by CompanyId
+        Map<String, List<Employee>> groupedByCompanyId = employees.stream()
+                .collect(Collectors.groupingBy(Employee::getCompanyId));
+        groupedByCompanyId.forEach((companyId, employeeListCompany) -> {
+
+                    //Get all KieContainer for this company
+                    Map<LocalDate, KieContainer> localDateKieContainerMap = kieContainers.get(companyId);
+                    // Group employees by YearMonth
+                    Map<YearMonth, List<Employee>> groupedByYearMonth = employees.stream()
+                            .collect(Collectors.groupingBy(Employee::getMonth));
+
+                    //  employees forEach by YearMonth
+                    groupedByYearMonth.forEach((yearMonth, employeeListCompanyInYearMonth) -> {
+                        System.out.println("YearMonth: " + yearMonth);
+
+                        //Get Last date role before this yearMonth
+                        LocalDate lastDayOfMonth = yearMonth.atEndOfMonth();
+                        Optional<LocalDate> maxDateLessThanOrEqualToLastDayOfMonth =
+                                localDateKieContainerMap.keySet().stream()
+                                        .filter(date -> !date.isAfter(lastDayOfMonth))
+                                        .max(Comparator.naturalOrder());
+
+                        // Get role for this company at this yearMonth
+                        KieContainer kieContainer = localDateKieContainerMap
+                                .get(maxDateLessThanOrEqualToLastDayOfMonth);
+                        if (kieContainer == null) {
+                            throw new RuntimeException(
+                                    "Rules not found for company: " + companyId +
+                                            " for " + maxDateLessThanOrEqualToLastDayOfMonth);
+                        }
+
+                        KieSession kieSession = kieContainer.newKieSession();
+
+                        employeeListCompanyInYearMonth.forEach(employee -> kieSession.insert(employee));
+
+                        kieSession.fireAllRules();
+                        kieSession.dispose();
+                    });
+                }
+        );
+
+        employeeRepository.saveAll(employees);
+        return employees;
+    }
 }

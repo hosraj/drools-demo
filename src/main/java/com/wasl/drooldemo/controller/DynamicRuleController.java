@@ -28,7 +28,7 @@ public class DynamicRuleController {
      * @param effectiveDate the date from which the rule is effective
      * @return a response entity indicating the outcome of the operation
      */
-    @PostMapping("/add")
+    @PostMapping("/add-rule")
     public ResponseEntity<Void> addRule(@RequestParam String companyId, @RequestParam String ruleContent, @RequestParam String effectiveDate) {
         dynamicRuleService.addRule(companyId, ruleContent, YearMonth.parse(effectiveDate).atEndOfMonth());
         return ResponseEntity.ok().build();
@@ -44,6 +44,17 @@ public class DynamicRuleController {
     @PostMapping("/check-salary")
     public ResponseEntity<List<Employee>> checkSalary(@RequestParam String companyId, @RequestParam String month) {
         List<Employee> employees = dynamicRuleService.checkSalaries(companyId, YearMonth.parse(month));
+        return ResponseEntity.ok(employees);
+    }
+    /**
+     * Checks the salaries of employees .
+     *
+     * @param  employeeList list of employees
+     * @return a list of employees with updated salary validation status
+     */
+    @PostMapping("/check-salary")
+    public ResponseEntity<List<Employee>> checkSalary(@RequestBody List<Employee>  employeeList ) {
+        List<Employee> employees = dynamicRuleService.checkSalaries(employeeList);
         return ResponseEntity.ok(employees);
     }
 }
