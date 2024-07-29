@@ -4,6 +4,7 @@ package com.wasl.drooldemo.repository;
 import com.wasl.drooldemo.entity.Employee;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.time.YearMonth;
 import java.util.List;
 
 /**
@@ -18,4 +19,6 @@ public interface EmployeeRepository extends MongoRepository<Employee, String> {
      * @return a list of employees in the specified company
      */
     List<Employee> findByCompanyId(String companyId);
+    List<Employee> findByCompanyIdAndMonth(String companyId, YearMonth month);
+
 }

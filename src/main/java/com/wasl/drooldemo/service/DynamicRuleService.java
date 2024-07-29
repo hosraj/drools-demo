@@ -20,9 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Service class for managing dynamic rules and checking employee salaries.
@@ -41,7 +39,7 @@ public class DynamicRuleService {
     private EmployeeRepository employeeRepository;
 
     private KieServices kieServices = KieServices.Factory.get();
-    private Map<String, KieContainer> kieContainers = new HashMap<>();
+    private Map<String, Map<LocalDate, KieContainer>> kieContainers = new HashMap<>();
 
     /**
      * Adds a new rule for the specified company and updates the rule engine.
@@ -63,13 +61,14 @@ public class DynamicRuleService {
 
         KieFileSystem kieFileSystem = kieServices.newKieFileSystem();
         Resource resource = ResourceFactory.newByteArrayResource(drl.getBytes());
-        kieFileSystem.write("src/main/resources/" + companyId + "/rules.drl", resource);
+        kieFileSystem.write("src/main/resources/" + companyId + "/" + effectiveDate.toString() + "/rules.drl", resource);
 
         kieServices.newKieBuilder(kieFileSystem).buildAll();
         KieRepository kieRepository = kieServices.getRepository();
         KieContainer kieContainer = kieServices.newKieContainer(kieRepository.getDefaultReleaseId());
-
-        kieContainers.put(companyId, kieContainer);
+        Map<LocalDate, KieContainer> localDateKieContainerMap = kieContainers.get(companyId);
+        localDateKieContainerMap.put(effectiveDate, kieContainer);
+        kieContainers.put(companyId, localDateKieContainerMap);
     }
 
     /**
@@ -80,25 +79,48 @@ public class DynamicRuleService {
      * @return a list of employees with updated salary validation status
      */
     public List<Employee> checkSalaries(String companyId, YearMonth month) {
-        Company company = companyRepository.findById(companyId).orElseThrow(() -> new RuntimeException("Company not found"));
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found"));
 
-        List<Employee> employees = employeeRepository.findByCompanyId(companyId);
-        KieContainer kieContainer = kieContainers.get(companyId);
+        List<Employee> employees = employeeRepository.findByCompanyIdAndMonth(companyId, month);
+        Map<LocalDate, KieContainer> localDateKieContainerMap = kieContainers.get(companyId);
+        if (localDateKieContainerMap == null) {
+            throw new RuntimeException("Rules not found for company: " + companyId);
+        }
+        LocalDate lastDayOfMonth = month.atEndOfMonth();
+
+        Optional<LocalDate> maxDateLessThanOrEqualToLastDayOfMonth =
+                localDateKieContainerMap.keySet().stream()
+                        .filter(date -> !date.isAfter(lastDayOfMonth))
+                        .max(Comparator.naturalOrder());
+
+        KieContainer kieContainer = localDateKieContainerMap
+                .get(maxDateLessThanOrEqualToLastDayOfMonth);
 
         if (kieContainer == null) {
-            throw new RuntimeException("Rules not found for company: " + companyId);
+            throw new RuntimeException(
+                    "Rules not found for company: " + companyId +
+                    " for " + maxDateLessThanOrEqualToLastDayOfMonth);
         }
 
         KieSession kieSession = kieContainer.newKieSession();
-        employees.forEach(employee -> {
-            if (employee.getMonth().isBefore(month)) {
-                kieSession.insert(employee);
-            }
-        });
+
+        employees.forEach(employee -> kieSession.insert(employee));
+
         kieSession.fireAllRules();
         kieSession.dispose();
 
         employeeRepository.saveAll(employees);
         return employees;
     }
+    //todo public List<Employee> checkSalaries(List<Employee>) {
+    //  // Group employees by YearMonth
+    //        Map<YearMonth, List<Employee>> groupedByYearMonth = employees.stream()
+    //                .collect(Collectors.groupingBy(Employee::getYearMonth));
+    //
+    //        // Print the grouped result
+    //        groupedByYearMonth.forEach((yearMonth, employeeList) -> {
+    //            System.out.println("YearMonth: " + yearMonth);
+    //            employeeList.forEach(employee -> System.out.println("    Employee: " + employee));
+    //        });
 }
