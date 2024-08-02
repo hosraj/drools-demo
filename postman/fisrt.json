@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "Table API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Validate and Store Array",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  [1, 2, 3],\n  [4, 5, 6]\n]"
+        },
+        "url": {
+          "raw": "http://localhost:8080/table/validate-and-store?tableName=myTable",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "table",
+            "validate-and-store"
+          ],
+          "query": [
+            {
+              "key": "tableName",
+              "value": "myTable"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
